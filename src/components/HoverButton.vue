@@ -27,7 +27,7 @@ onUnmounted(() => emit("unregister", props.id));
 
 <template>
   <div :id="id" class="hover-btn" :class="{ 'hover-btn--active': isHovered }">
-    <span v-if="icon" class="hover-btn__icon">{{ icon }}</span>
+    <i v-if="icon" :class="['hover-btn__icon', icon]"></i>
     <span class="hover-btn__label">{{ label }}</span>
 
     <!-- Barra de progreso circular o lineal -->
@@ -47,10 +47,10 @@ onUnmounted(() => emit("unregister", props.id));
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 30px;
   width: 160px;
   height: 160px;
-  border-radius: 20px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
   cursor: none;

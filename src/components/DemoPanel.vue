@@ -11,46 +11,98 @@ const hoverState = inject<any>("hoverState")!;
 
 const bgColor = ref("#1a1a2eaa");
 const message = ref("¡Prueba con tu mano!");
-const counter = ref(0);
-const confettiActive = ref(false);
+
+const emit = defineEmits(["change-filter"]);
 
 const actions = [
   {
-    id: "btn-color",
-    label: "Cambiar Color",
-    icon: "🎨",
+    id: "btn-blanconegro",
+    label: "Blanco y negro",
+    icon: "fa-solid fa-circle-half-stroke", // Ícono de contraste
     onActivate: () => {
-      const colors = ["#1a1a2e88", "#16213e88", "#0f346088", "#53348388"];
-      bgColor.value = colors[Math.floor(Math.random() * colors.length)];
-      message.value = "¡Color cambiado!";
+      emit("change-filter", "grayscale");
+      message.value = "Filtro: Blanco y Negro";
     },
   },
   {
-    id: "btn-counter",
-    label: "Contar",
-    icon: "🔢",
+    id: "btn-sepia",
+    label: "Sepia",
+    icon: "fa-solid fa-camera-retro", // Ícono de cámara antigua
     onActivate: () => {
-      counter.value++;
-      message.value = `Conteo: ${counter.value}`;
+      emit("change-filter", "sepia");
+      message.value = "Filtro: Sepia";
     },
   },
   {
-    id: "btn-confetti",
-    label: "Celebrar",
-    icon: "🎉",
+    id: "btn-invert",
+    label: "Invertir",
+    icon: "fa-solid fa-yin-yang", // Ícono del yin yang para los colores invertidos
     onActivate: () => {
-      confettiActive.value = true;
-      message.value = "¡Fiesta!";
-      setTimeout(() => (confettiActive.value = false), 2000);
+      emit("change-filter", "invert");
+      message.value = "Filtro: Negativo";
     },
   },
   {
-    id: "btn-reset",
-    label: "Resetear",
-    icon: "🔄",
+    id: "btn-normal",
+    label: "Video Original",
+    icon: "fa-solid fa-video", // Ícono de cámara de video
     onActivate: () => {
-      counter.value = 0;
-      bgColor.value = "#1a1a2e88";
+      emit("change-filter", "none");
+      message.value = "Filtro: Ninguno (Normal)";
+    },
+  },
+  {
+    id: "btn-edge",
+    label: "Bordes",
+    icon: "fa-solid fa-border-all", // Ícono en forma de cuadrícula / bordes
+    onActivate: () => {
+      emit("change-filter", "edge");
+      message.value = "Filtro: Detección de Bordes";
+    },
+  },
+  {
+    id: "btn-contrast",
+    label: "Alto Contraste",
+    icon: "fa-solid fa-sun", // Ícono de un sol para indicar intensidad de luz/contraste
+    onActivate: () => {
+      emit("change-filter", "contrast");
+      message.value = "Filtro: Alto Contraste";
+    },
+  },
+  {
+    id: "btn-emboss",
+    label: "Relieve",
+    icon: "fa-solid fa-mountain", // Ícono de relieve topográfico
+    onActivate: () => {
+      emit("change-filter", "emboss");
+      message.value = "Filtro: Relieve (Emboss)";
+    },
+  },
+  {
+    id: "btn-threshold",
+    label: "Binarizado",
+    icon: "fa-solid fa-barcode", // Ícono que recuerda al blanco y negro puro
+    onActivate: () => {
+      emit("change-filter", "threshold");
+      message.value = "Filtro: Binarizado (Blanco/Negro puro)";
+    },
+  },
+  {
+    id: "btn-posterize",
+    label: "Posterizar",
+    icon: "fa-solid fa-layer-group", // Ícono de capas/niveles
+    onActivate: () => {
+      emit("change-filter", "posterize");
+      message.value = "Filtro: Posterizado (8-bits)";
+    },
+  },
+  {
+    id: "btn-red-channel",
+    label: "Canal Rojo",
+    icon: "fa-solid fa-eye-dropper", // Ícono de gota de color
+    onActivate: () => {
+      emit("change-filter", "red-channel");
+      message.value = "Filtro: Solo Canal Rojo";
     },
   },
 ];

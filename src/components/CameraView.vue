@@ -9,8 +9,8 @@ import { useHoverClick } from "./composables/useHoverClick";
 const videoEl = ref<HTMLVideoElement | null>(null);
 const canvasEl = ref<HTMLCanvasElement | null>(null);
 const canvasDetectedFaceEl = ref<HTMLCanvasElement | null>;
-const canvasWidth = 1920;
-const canvasHeight = 1080;
+const canvasWidth = 854;
+const canvasHeight = 480;
 
 const { startCamera, stopCamera } = useCamera();
 const {
@@ -21,14 +21,23 @@ const {
   handsDetected,
   landmarks,
 } = useHandTracking();
+
 const {
   initFaceMesh,
   sendFrame: sendFace,
   destroy: destroyFace,
   faceDetected,
 } = useFaceMesh();
+
 const { hoverState, registerElement, unregisterElement, tick } =
   useHoverClick(indexFingerPos);
+
+const props = defineProps({
+  filterType: {
+    type: String,
+    default: "none",
+  },
+});
 
 provide("registerHoverElement", registerElement);
 provide("unregisterHoverElement", unregisterElement);
@@ -48,9 +57,138 @@ async function onFrame() {
 function drawOverlay() {
   const canvas = canvasEl.value;
   const ctx = canvas?.getContext("2d");
-  if (!canvas || !ctx) return;
+  const video = videoEl.value;
+  if (!canvas || !ctx || !video) return;
 
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.save();
+  ctx.scale(-1, 1);
+  ctx.translate(-canvasWidth, 0);
+  ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+  ctx.restore();
+
+  // (Reemplaza la lógica de filtros dentro de tu drawOverlay)
+  if (props.filterType !== "none") {
+    const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+    const data = imageData.data;
+    const max = data.length;
+
+    // ----- FILTROS EXISTENTES (Puntos individuales) -----
+    if (props.filterType === "grayscale") {
+      for (let i = 0; i < max; i += 4) {
+        const gray =
+          (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+        data[i] = data[i + 1] = data[i + 2] = gray;
+      }
+    } else if (props.filterType === "invert") {
+      for (let i = 0; i < max; i += 4) {
+        data[i] = 255 - data[i];
+        data[i + 1] = 255 - data[i + 1];
+        data[i + 2] = 255 - data[i + 2];
+      }
+    } else if (props.filterType === "sepia") {
+      for (let i = 0; i < max; i += 4) {
+        const r = data[i],
+          g = data[i + 1],
+          b = data[i + 2];
+        data[i] = r * 0.393 + g * 0.769 + b * 0.189;
+        data[i + 1] = r * 0.349 + g * 0.686 + b * 0.168;
+        data[i + 2] = r * 0.272 + g * 0.534 + b * 0.131;
+      }
+    } else if (props.filterType === "contrast") {
+      // Factor de contraste (mayor a 1 aumenta el contraste, en este caso 2.0 es el doble)
+      const factor = 2.0;
+      for (let i = 0; i < max; i += 4) {
+        // Fórmula: factor * (color - 128) + 128
+        // El Uint8ClampedArray se encarga de que no baje de 0 ni pase de 255
+        data[i] = factor * (data[i] - 128) + 128; // R
+        data[i + 1] = factor * (data[i + 1] - 128) + 128; // G
+        data[i + 2] = factor * (data[i + 2] - 128) + 128; // B
+      }
+    } else if (props.filterType === "threshold") {
+      // 1. BINARIZACIÓN
+      const umbral = 127;
+      for (let i = 0; i < max; i += 4) {
+        const luminancia =
+          (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+        const color = luminancia > umbral ? 255 : 0;
+        data[i] = data[i + 1] = data[i + 2] = color;
+      }
+    } else if (props.filterType === "posterize") {
+      // 2. POSTERIZACIÓN
+      const niveles = 4; // Entre más bajo, menos colores
+      const factor = 255 / (niveles - 1);
+      for (let i = 0; i < max; i += 4) {
+        data[i] = Math.round(data[i] / factor) * factor;
+        data[i + 1] = Math.round(data[i + 1] / factor) * factor;
+        data[i + 2] = Math.round(data[i + 2] / factor) * factor;
+      }
+    } else if (props.filterType === "red-channel") {
+      // 3. EXTRACCIÓN DE CANAL ROJO
+      for (let i = 0; i < max; i += 4) {
+        // data[i] (Rojo) se queda igual
+        data[i + 1] = 0; // Apagamos el Verde
+        data[i + 2] = 0; // Apagamos el Azul
+      }
+    }
+    // ----- NUEVOS FILTROS DE CONVOLUCIÓN (Matrices 3x3) -----
+    else {
+      // Definimos nuestras matrices de kernel (3x3 aplanadas)
+      const kernels: Record<string, number[]> = {
+        edge: [
+          // Detección de bordes (Laplaciano)
+          0, -1, 0, -1, 4, -1, 0, -1, 0,
+        ],
+        sharpen: [
+          // Realce / Enfoque
+          0, -1, 0, -1, 5, -1, 0, -1, 0,
+        ],
+        emboss: [
+          // Relieve
+          -2, -1, 0, -1, 1, 1, 0, 1, 2,
+        ],
+      };
+
+      const kernel = kernels[props.filterType];
+      if (kernel) {
+        // Hacemos una copia de los datos originales para leer de ahí
+        const tempData = new Uint8ClampedArray(data);
+        const w = canvasWidth;
+        const h = canvasHeight;
+
+        // Compensación de luminosidad (para el relieve, para que no se vea negro)
+        const offset = props.filterType === "emboss" ? 128 : 0;
+
+        // Saltamos los bordes extremos 1 píxel (y=1 a h-1) por rendimiento
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const dstOff = (y * w + x) * 4;
+            let r = 0,
+              g = 0,
+              b = 0;
+
+            // Recorremos los 9 píxeles (matriz 3x3)
+            for (let cy = -1; cy <= 1; cy++) {
+              for (let cx = -1; cx <= 1; cx++) {
+                const srcOff = ((y + cy) * w + (x + cx)) * 4;
+                const wt = kernel[(cy + 1) * 3 + (cx + 1)];
+
+                r += tempData[srcOff] * wt;
+                g += tempData[srcOff + 1] * wt;
+                b += tempData[srcOff + 2] * wt;
+              }
+            }
+
+            // Aplicamos valores y sumamos el offset
+            data[dstOff] = r + offset;
+            data[dstOff + 1] = g + offset;
+            data[dstOff + 2] = b + offset;
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
 
   // Dibujar punto del dedo índice
   if (indexFingerPos.value) {
@@ -140,7 +278,7 @@ onUnmounted(() => {
   height: 90%;
   object-fit: cover;
   transform: scaleX(-1);
-  opacity: 0.6;
+  opacity: 0;
 }
 
 .camera-view__canvas {
@@ -148,7 +286,6 @@ onUnmounted(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
 }
 
 .camera-view__overlay {
