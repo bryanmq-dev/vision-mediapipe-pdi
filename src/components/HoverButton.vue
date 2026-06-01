@@ -47,9 +47,9 @@ onUnmounted(() => emit("unregister", props.id));
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
-  width: 160px;
-  height: 160px;
+  gap: 5px;
+  width: 100px;
+  height: 100px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -66,12 +66,12 @@ onUnmounted(() => emit("unregister", props.id));
 }
 
 .hover-btn__icon {
-  font-size: 3rem;
+  font-size: 2rem;
 }
 
 .hover-btn__label {
   color: white;
-  font-size: 0.9rem;
+  font-size: 0.6rem;
   font-weight: 600;
 }
 

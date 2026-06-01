@@ -27,6 +27,7 @@ const {
   sendFrame: sendFace,
   destroy: destroyFace,
   faceDetected,
+  facePosition,
 } = useFaceMesh();
 
 const { hoverState, registerElement, unregisterElement, tick } =
@@ -56,7 +57,7 @@ async function onFrame() {
 
 function drawOverlay() {
   const canvas = canvasEl.value;
-  const ctx = canvas?.getContext("2d");
+  const ctx = canvas?.getContext("2d", { willReadFrequently: true });
   const video = videoEl.value;
   if (!canvas || !ctx || !video) return;
 
@@ -192,11 +193,31 @@ function drawOverlay() {
 
   // Dibujar punto del dedo índice
   if (indexFingerPos.value) {
-    const { x, y } = indexFingerPos.value;
+    const { xF, yF } = indexFingerPos.value;
 
     // Cursor principal
     ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.arc(xF, yF, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
+    ctx.fill();
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Punto central
+    ctx.beginPath();
+    ctx.arc(xF, yF, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
+
+  if (facePosition.value) {
+    const { x, y } = facePosition.value;
+
+    const mirroredX = 1 - x;
+    // Cursor principal
+    ctx.beginPath();
+    ctx.rect(mirroredX * canvasWidth - 100, y * canvasHeight - 100, 150, 150);
     ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
     ctx.fill();
     ctx.strokeStyle = "#4ade80";

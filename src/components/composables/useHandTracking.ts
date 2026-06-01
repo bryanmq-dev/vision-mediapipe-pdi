@@ -16,6 +16,8 @@ export interface FingerPosition {
   y: number; // px en canvas
   xNorm: number; // 0-1
   yNorm: number; // 0-1
+  xF: number;
+  yF: number;
 }
 
 export function useHandTracking() {
@@ -59,19 +61,13 @@ export function useHandTracking() {
         // Guardamos las normativas y calculamos aproximados en px (dependerá de tu canvas/video real)
         indexFingerPos.value = {
           x: mirroredX * window.innerWidth,
+          xF: mirroredX * 854,
           y: indexTip.y * window.innerHeight,
+          yF: indexTip.y * 480,
           xNorm: mirroredX,
           yNorm: indexTip.y,
         };
-
-        console.log(
-          "🖐️ Dedo detectado ->",
-          `Norm(x:${mirroredX.toFixed(2)}, y:${indexTip.y.toFixed(2)})`,
-        );
       } else {
-        if (handsDetected.value === true) {
-          console.log("🖐️ Mano perdida de vista");
-        }
         handsDetected.value = false;
         indexFingerPos.value = null;
       }

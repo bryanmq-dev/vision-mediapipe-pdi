@@ -1,10 +1,16 @@
 // src/composables/useFaceMesh.ts
 import { ref, shallowRef } from "vue";
 
+export interface FacePosition {
+  x: number; // px en canvas
+  y: number; // px en canvas
+}
+
 export function useFaceMesh() {
   const faceMesh = shallowRef<FaceMesh | null>(null);
   const faceDetected = ref(false);
   const faceLandmarks = ref<any[][]>([]);
+  const facePosition = ref<FacePosition | null>(null);
 
   async function initFaceMesh() {
     const instance = new FaceMesh({
@@ -29,6 +35,11 @@ export function useFaceMesh() {
       // ← FaceMeshResults
       faceLandmarks.value = results.multiFaceLandmarks ?? [];
       faceDetected.value = faceLandmarks.value.length > 0;
+
+      facePosition.value = {
+        x: faceLandmarks.value[0]?.[0]["x"],
+        y: faceLandmarks.value[0]?.[0]["y"],
+      };
     });
 
     faceMesh.value = instance;
@@ -46,5 +57,12 @@ export function useFaceMesh() {
     faceMesh.value = null;
   }
 
-  return { initFaceMesh, sendFrame, destroy, faceDetected, faceLandmarks };
+  return {
+    initFaceMesh,
+    sendFrame,
+    destroy,
+    faceDetected,
+    faceLandmarks,
+    facePosition,
+  };
 }

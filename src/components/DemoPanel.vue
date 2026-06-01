@@ -145,10 +145,16 @@ const actions = [
 }
 
 .demo-panel__buttons {
+  display: grid;
+  max-width: 50vw;
   padding: 20px;
   border-radius: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: minmax(100px, auto);
   gap: 20px;
-  display: flex;
+  opacity: 0.7;
+  justify-self: end;
+  align-self: end;
 }
 
 .label-message {
