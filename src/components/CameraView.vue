@@ -292,7 +292,6 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* Video espejado para que sea intuitivo */
 .camera-view__video {
   inset: 0;
   width: 90%;

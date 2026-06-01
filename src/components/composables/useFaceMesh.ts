@@ -2,8 +2,8 @@
 import { ref, shallowRef } from "vue";
 
 export interface FacePosition {
-  x: number; // px en canvas
-  y: number; // px en canvas
+  x: number;
+  y: number; 
 }
 
 export function useFaceMesh() {
