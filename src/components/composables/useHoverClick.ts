@@ -18,7 +18,6 @@ export function useHoverClick(
     progress: 0,
   });
 
-  // Elementos registrados: id → callback
   const registeredElements = new Map<string, () => void>();
 
   function registerElement(id: string, callback: () => void) {
@@ -29,7 +28,6 @@ export function useHoverClick(
     registeredElements.delete(id);
   }
 
-  // Chequeamos si el dedo está sobre algún elemento registrado
   function checkHover() {
     const pos = indexFingerPos.value;
     if (!pos) {
@@ -61,7 +59,6 @@ export function useHoverClick(
       return;
     }
 
-    // ¿Es el mismo elemento que ya estábamos hovereando?
     if (hoverState.value.elementId !== hoveredId) {
       // Nuevo elemento: reiniciar timer
       hoverState.value = {

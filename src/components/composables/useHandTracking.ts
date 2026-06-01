@@ -4,7 +4,7 @@ import { ref, shallowRef } from "vue";
 // Índices de landmarks importantes
 export const LANDMARKS = {
   WRIST: 0,
-  INDEX_TIP: 8, // ← el que usaremos para hover
+  INDEX_TIP: 8, 
   MIDDLE_TIP: 12,
   RING_TIP: 16,
   PINKY_TIP: 20,
@@ -12,10 +12,10 @@ export const LANDMARKS = {
 } as const;
 
 export interface FingerPosition {
-  x: number; // px en canvas
-  y: number; // px en canvas
-  xNorm: number; // 0-1
-  yNorm: number; // 0-1
+  x: number; 
+  y: number; 
+  xNorm: number; 
+  yNorm: number; 
   xF: number;
   yF: number;
 }
@@ -29,8 +29,6 @@ export function useHandTracking() {
   async function initHands() {
     const instance = new Hands({
       locateFile: (file) => {
-        // Solución al conflicto con FaceMesh: MediaPipe sobreescribe locateFile globalmente,
-        // así que debemos asegurarnos de devolver la URL correcta según el archivo.
         if (file.includes("face_mesh")) {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
         }
@@ -46,7 +44,6 @@ export function useHandTracking() {
     });
 
     instance.onResults((results: HandsResults) => {
-      // ← HandsResults (nuestro tipo global)
       const detectedLandmarks = results.multiHandLandmarks ?? [];
       landmarks.value = detectedLandmarks;
 
@@ -54,11 +51,8 @@ export function useHandTracking() {
         handsDetected.value = true;
         const indexTip = detectedLandmarks[0][LANDMARKS.INDEX_TIP];
 
-        // Invertimos el eje X (1 - x) para hacer el efecto "espejo" (selfie mode).
-        // Esto sincroniza el movimiento de la mano con el transform: scaleX(-1) del video en CSS.
         const mirroredX = 1 - indexTip.x;
 
-        // Guardamos las normativas y calculamos aproximados en px (dependerá de tu canvas/video real)
         indexFingerPos.value = {
           x: mirroredX * window.innerWidth,
           xF: mirroredX * 854,
@@ -73,10 +67,8 @@ export function useHandTracking() {
       }
     });
 
-    // ¡CRÍTICO! Guardar la instancia para que `sendFrame` pueda usarla
     hands.value = instance;
 
-    // Forzar la inicialización de los archivos WASM para poder esperar y que no colisionen luego.
     await instance.initialize();
   }
 

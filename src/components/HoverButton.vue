@@ -3,8 +3,6 @@
 import { onMounted, onUnmounted, computed } from "vue";
 import { useHoverClick } from "./composables/useHoverClick";
 
-// Este componente recibe el composable inyectado vía provide/inject
-// o lo puedes pasar como prop
 const props = defineProps<{
   id: string;
   label: string;

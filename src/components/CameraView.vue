@@ -67,7 +67,6 @@ function drawOverlay() {
   ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
   ctx.restore();
 
-  // (Reemplaza la lógica de filtros dentro de tu drawOverlay)
   if (props.filterType !== "none") {
     const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
     const data = imageData.data;
@@ -211,6 +210,7 @@ function drawOverlay() {
     ctx.fill();
   }
 
+  // Dibujar posición del rostro (mirado horizontalmente para que coincida con el video espejado) 
   if (facePosition.value) {
     const { x, y } = facePosition.value;
 

@@ -15,8 +15,6 @@ export function useFaceMesh() {
   async function initFaceMesh() {
     const instance = new FaceMesh({
       locateFile: (file) => {
-        // Solución al conflicto con Hands: MediaPipe puede mezclar las llamadas a locateFile
-        // cuando se usan múltiples modelos, así que enrutamos correctamente por el nombre del archivo.
         if (file.includes("hands")) {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
         }
