@@ -1,5 +1,36 @@
-# Vue 3 + TypeScript + Vite
+## Instalación manual
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+### Creación de proyecto
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+```
+pnpm create vite@latest vision-mediapipe
+```
+
+### Paquetes
+
+```
+pnpm i @mediapipe/camera_utils @mediapipe/hands @mediapipe/face_mesh
+```
+
+## Instalación desde Repositorio
+
+```
+git clone https://github.com/bryanmq-dev/vision-mediapipe.git
+cd vision-mediapipe
+pnpm i
+pnpm run dev
+```
+
+## Kernels de ejemplo
+
+Sobel horizontal
+
+```
+-1,-2,-1,0,0,0,1,2,1
+```
+
+Sobel Vertical
+
+```
+1,0,-1,2,0,-2,1,0,-1
+```

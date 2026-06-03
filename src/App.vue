@@ -12,7 +12,7 @@ function setFilter(filtername: string) {
 
 <template>
   <CameraView :filter-type="activeFilter">
-    <DemoPanel @change-filter="setFilter" />
+    <DemoPanel @change-filter="setFilter" @custom-filter="setFilter" />
   </CameraView>
 </template>
 

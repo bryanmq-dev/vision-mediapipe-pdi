@@ -8,7 +8,7 @@ import { useHoverClick } from "./composables/useHoverClick";
 
 const videoEl = ref<HTMLVideoElement | null>(null);
 const canvasEl = ref<HTMLCanvasElement | null>(null);
-const canvasDetectedFaceEl = ref<HTMLCanvasElement | null>;
+const canvasDecEl = ref<HTMLCanvasElement | null>(null);
 const canvasWidth = 854;
 const canvasHeight = 480;
 
@@ -52,7 +52,62 @@ async function onFrame() {
 
   tick();
 
+  drawDetection();
   drawOverlay();
+}
+
+function drawDetection() {
+  const canvas = canvasDecEl.value;
+  const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+  if (!canvas || !ctx) return;
+
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.save();
+  ctx.scale(-1, 1);
+  ctx.translate(-canvasWidth, 0);
+  ctx.rect(0, 0, canvasWidth, canvasHeight);
+  ctx.restore();
+
+  // Dibujar punto del dedo índice
+  if (indexFingerPos.value) {
+    const { xF, yF } = indexFingerPos.value;
+
+    // Cursor principal
+    ctx.beginPath();
+    ctx.arc(xF, yF, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
+    ctx.fill();
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Punto central
+    ctx.beginPath();
+    ctx.arc(xF, yF, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
+
+  // Dibujar posición del rostro (mirado horizontalmente para que coincida con el video espejado)
+  if (facePosition.value) {
+    const { x, y } = facePosition.value;
+
+    const mirroredX = 1 - x;
+    // Cursor principal
+    ctx.beginPath();
+    ctx.rect(mirroredX * canvasWidth - 100, y * canvasHeight - 100, 150, 150);
+    ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
+    ctx.fill();
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Punto central
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
 }
 
 function drawOverlay() {
@@ -61,6 +116,7 @@ function drawOverlay() {
   const video = videoEl.value;
   if (!canvas || !ctx || !video) return;
 
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   ctx.save();
   ctx.scale(-1, 1);
   ctx.translate(-canvasWidth, 0);
@@ -149,7 +205,17 @@ function drawOverlay() {
       };
 
       const kernel = kernels[props.filterType];
+      let currentKernel;
       if (kernel) {
+        currentKernel = kernel;
+      } else {
+        currentKernel = props.filterType
+          .toString()
+          .split(",")
+          .map((c) => parseInt(c));
+        //currentKernel props.filterType.split(",").map((c) => parseInt(c));
+      }
+      if (currentKernel) {
         // Hacemos una copia de los datos originales para leer de ahí
         const tempData = new Uint8ClampedArray(data);
         const w = canvasWidth;
@@ -170,7 +236,7 @@ function drawOverlay() {
             for (let cy = -1; cy <= 1; cy++) {
               for (let cx = -1; cx <= 1; cx++) {
                 const srcOff = ((y + cy) * w + (x + cx)) * 4;
-                const wt = kernel[(cy + 1) * 3 + (cx + 1)];
+                const wt = currentKernel[(cy + 1) * 3 + (cx + 1)];
 
                 r += tempData[srcOff] * wt;
                 g += tempData[srcOff + 1] * wt;
@@ -189,47 +255,6 @@ function drawOverlay() {
 
     ctx.putImageData(imageData, 0, 0);
   }
-
-  // Dibujar punto del dedo índice
-  if (indexFingerPos.value) {
-    const { xF, yF } = indexFingerPos.value;
-
-    // Cursor principal
-    ctx.beginPath();
-    ctx.arc(xF, yF, 8, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
-    ctx.fill();
-    ctx.strokeStyle = "#4ade80";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Punto central
-    ctx.beginPath();
-    ctx.arc(xF, yF, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-  }
-
-  // Dibujar posición del rostro (mirado horizontalmente para que coincida con el video espejado) 
-  if (facePosition.value) {
-    const { x, y } = facePosition.value;
-
-    const mirroredX = 1 - x;
-    // Cursor principal
-    ctx.beginPath();
-    ctx.rect(mirroredX * canvasWidth - 100, y * canvasHeight - 100, 150, 150);
-    ctx.fillStyle = "rgba(74, 222, 128, 0.4)";
-    ctx.fill();
-    ctx.strokeStyle = "#4ade80";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Punto central
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-  }
 }
 
 onMounted(async () => {
@@ -246,22 +271,52 @@ onUnmounted(() => {
   destroyHands();
   destroyFace();
 });
+
+const track1 = ref(1);
+const track2 = ref(1);
+const track3 = ref(1);
 </script>
 
 <template>
   <div class="camera-view">
+    <div class="camera-view__trackbars">
+      <div class="trackbar">
+        <label>Opacidad de video</label>
+        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track1" />
+        <span class="trackbar__value">{{ track1 }}</span>
+      </div>
+      <div class="trackbar">
+        <label>Opacidad de filtros</label>
+        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track2" />
+        <span class="trackbar__value">{{ track2 }}</span>
+      </div>
+      <div class="trackbar">
+        <label>Opacidad de deteccion</label>
+        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track3" />
+        <span class="trackbar__value">{{ track3 }}</span>
+      </div>
+    </div>
     <video
       ref="videoEl"
       class="camera-view__video"
       autoplay
       muted
       playsinline
+      :style="{ opacity: track1 }"
     />
     <canvas
       ref="canvasEl"
       class="camera-view__canvas"
       :width="canvasWidth"
       :height="canvasHeight"
+      :style="{ opacity: track2 }"
+    />
+    <canvas
+      ref="canvasDecEl"
+      class="camera-view__decCanvas"
+      :width="canvasWidth"
+      :height="canvasHeight"
+      :style="{ opacity: track3 }"
     />
 
     <!-- Indicadores de estado -->
@@ -294,14 +349,21 @@ onUnmounted(() => {
 
 .camera-view__video {
   inset: 0;
-  width: 90%;
-  height: 90%;
+  position: absolute;
   object-fit: cover;
+  width: 100%;
+  height: 100%;
   transform: scaleX(-1);
-  opacity: 0;
 }
 
 .camera-view__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-view__decCanvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -329,5 +391,72 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   backdrop-filter: blur(8px);
+}
+
+.camera-view__trackbars {
+  position: absolute;
+  top: 20%;
+  left: 3%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trackbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.trackbar label {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.trackbar__value {
+  color: #4ade80;
+  font-size: 14px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+.trackbar input[type="range"] {
+  -webkit-appearance: none;
+  width: 150px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  cursor: pointer;
+}
+
+.trackbar input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4ade80;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.trackbar input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.8);
 }
 </style>

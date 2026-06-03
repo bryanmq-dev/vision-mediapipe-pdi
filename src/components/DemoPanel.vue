@@ -12,7 +12,9 @@ const hoverState = inject<any>("hoverState")!;
 const bgColor = ref("#1a1a2eaa");
 const message = ref("¡Prueba con tu mano!");
 
-const emit = defineEmits(["change-filter"]);
+const customkernel = ref("1,1,1,1,1,1,1,1,1");
+
+const emit = defineEmits(["change-filter", "custom-filter"]);
 
 const actions = [
   {
@@ -106,10 +108,37 @@ const actions = [
     },
   },
 ];
+
+const onActivateCustom = () => {
+  const splitted = customkernel.value.split(",");
+  if (splitted[splitted.length - 1] === ",") {
+    emit("custom-filter", splitted.slice(0, splitted.length - 1));
+  } else {
+    emit("custom-filter", splitted);
+  }
+  message.value = "Filtro customizado";
+};
 </script>
 
 <template>
   <div class="demo-panel">
+    <div class="demo-panel__custom-kernel">
+      <input
+        type="text"
+        v-model="customkernel"
+        class="demo-panel__custom-kernel-field"
+      />
+      <HoverButton
+        key="custom"
+        id="customId"
+        icon="fa-solid fa-pen"
+        label="Aplicar kernel customizado"
+        :on-activate="onActivateCustom"
+        :hover-state="hoverState"
+        @register="(id, cb) => registerEl(id, cb)"
+        @unregister="(id) => unregisterEl(id)"
+      />
+    </div>
     <div class="demo-panel__buttons" :style="{ backgroundColor: bgColor }">
       <HoverButton
         v-for="action in actions"
@@ -137,11 +166,13 @@ const actions = [
 <style>
 .demo-panel {
   display: flex;
-  height: 80vh;
   flex-direction: column;
   gap: 20px;
-  justify-content: end;
-  align-items: center;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100vh;
+  width: 100%;
+  position: relative;
 }
 
 .demo-panel__buttons {
@@ -167,5 +198,37 @@ const actions = [
   padding: 6px;
   border-radius: 10px;
   color: white;
+}
+
+.demo-panel__custom-kernel {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.demo-panel__custom-kernel-field {
+  padding: 12px 16px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  width: 250px;
+  backdrop-filter: blur(10px);
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+
+.demo-panel__custom-kernel-field:focus {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
 }
 </style>
