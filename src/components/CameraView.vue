@@ -43,6 +43,8 @@ const props = defineProps({
 provide("registerHoverElement", registerElement);
 provide("unregisterHoverElement", unregisterElement);
 provide("hoverState", hoverState);
+provide("handsDetected", handsDetected);
+provide("faceDetected", faceDetected);
 
 async function onFrame() {
   if (!videoEl.value) return;
@@ -278,185 +280,82 @@ const track3 = ref(1);
 </script>
 
 <template>
-  <div class="camera-view">
-    <div class="camera-view__trackbars">
-      <div class="trackbar">
-        <label>Opacidad de video</label>
-        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track1" />
-        <span class="trackbar__value">{{ track1 }}</span>
+  <div
+    class="relative w-[99vw] h-[99vh] overflow-hidden bg-black flex items-center justify-center"
+  >
+    <!-- Trackbars -->
+    <div
+      class="absolute top-8 right-8 z-50 flex flex-col gap-5 bg-black/30 p-6 rounded-2xl border border-white/10"
+    >
+      <div class="flex flex-col items-center gap-3">
+        <label
+          class="text-white/80 text-xs font-semibold uppercase tracking-wider"
+          >Opacidad filtros</label
+        >
+        <input
+          type="range"
+          min="0.0"
+          max="1.0"
+          step="0.1"
+          v-model="track2"
+          class="w-36 h-1.5 rounded-full bg-white/20 appearance-none cursor-pointer accent-green-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-400 [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(74,222,128,0.5)] [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:hover:shadow-[0_0_15px_rgba(74,222,128,0.8)]"
+        />
+        <span class="text-green-400 text-sm font-bold min-w-8 text-center">{{
+          track2
+        }}</span>
       </div>
-      <div class="trackbar">
-        <label>Opacidad de filtros</label>
-        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track2" />
-        <span class="trackbar__value">{{ track2 }}</span>
-      </div>
-      <div class="trackbar">
-        <label>Opacidad de deteccion</label>
-        <input type="range" min="0.0" max="1.0" step="0.1" v-model="track3" />
-        <span class="trackbar__value">{{ track3 }}</span>
+      <div class="flex flex-col items-center gap-3">
+        <label
+          class="text-white/80 text-xs font-semibold uppercase tracking-wider"
+          >Opacidad deteccion</label
+        >
+        <input
+          type="range"
+          min="0.0"
+          max="1.0"
+          step="0.1"
+          v-model="track3"
+          class="w-36 h-1.5 rounded-full bg-white/20 appearance-none cursor-pointer accent-green-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-green-400 [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(74,222,128,0.5)] [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:hover:shadow-[0_0_15px_rgba(74,222,128,0.8)]"
+        />
+        <span class="text-green-400 text-sm font-bold min-w-8 text-center">{{
+          track3
+        }}</span>
       </div>
     </div>
+
+    <!-- Video layer -->
     <video
       ref="videoEl"
-      class="camera-view__video"
+      class="absolute inset-0 w-full h-full object-cover -scale-x-100"
+      :style="{ opacity: track1 }"
       autoplay
       muted
       playsinline
-      :style="{ opacity: track1 }"
     />
+
+    <!-- Filter canvas layer -->
     <canvas
       ref="canvasEl"
-      class="camera-view__canvas"
+      class="absolute inset-0 w-full h-full"
       :width="canvasWidth"
       :height="canvasHeight"
       :style="{ opacity: track2 }"
     />
+
+    <!-- Detection canvas layer -->
     <canvas
       ref="canvasDecEl"
-      class="camera-view__decCanvas"
+      class="absolute inset-0 w-full h-full"
       :width="canvasWidth"
       :height="canvasHeight"
       :style="{ opacity: track3 }"
     />
 
-    <!-- Indicadores de estado -->
-    <div class="status-bar">
-      <span :class="['status-dot', { active: handsDetected }]" />
-      Manos: {{ handsDetected ? "✅" : "❌" }}
-      &nbsp;&nbsp;
-      <span :class="['status-dot', { active: faceDetected }]" />
-      Rostro: {{ faceDetected ? "✅" : "❌" }}
-    </div>
-
-    <!-- Slot para el contenido interactivo encima del video -->
-    <div class="camera-view__overlay">
+    <!-- Overlay slot -->
+    <div class="absolute inset-0 p-5 pointer-events-none">
       <slot />
     </div>
   </div>
 </template>
 
-<style scoped>
-.camera-view {
-  position: relative;
-  width: 99vw;
-  height: 99vh;
-  overflow: hidden;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.camera-view__video {
-  inset: 0;
-  position: absolute;
-  object-fit: cover;
-  width: 100%;
-  height: 100%;
-  transform: scaleX(-1);
-}
-
-.camera-view__canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.camera-view__decCanvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.camera-view__overlay {
-  position: absolute;
-  padding: 20px;
-  inset: 0;
-  pointer-events: none;
-}
-
-.status-bar {
-  position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(14, 12, 12, 0.6);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  backdrop-filter: blur(8px);
-}
-
-.camera-view__trackbars {
-  position: absolute;
-  top: 20%;
-  left: 3%;
-  transform: translateY(-50%);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.trackbar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.trackbar label {
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.trackbar__value {
-  color: #4ade80;
-  font-size: 14px;
-  font-weight: bold;
-  min-width: 30px;
-  text-align: center;
-}
-
-.trackbar input[type="range"] {
-  -webkit-appearance: none;
-  width: 150px;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.2);
-  outline: none;
-  cursor: pointer;
-}
-
-.trackbar input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #4ade80;
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-
-.trackbar input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 15px rgba(74, 222, 128, 0.8);
-}
-</style>
+<style scoped></style>

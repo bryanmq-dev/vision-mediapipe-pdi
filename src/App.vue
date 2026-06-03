@@ -17,12 +17,7 @@ function setFilter(filtername: string) {
 </template>
 
 <style>
-* {
-  margin: 0 !important;
-  padding: 0;
-  box-sizing: border-box;
-}
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
 }
 </style>
