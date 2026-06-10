@@ -1,4 +1,3 @@
-// src/composables/useCamera.ts
 import { ref } from "vue";
 
 export function useCamera() {

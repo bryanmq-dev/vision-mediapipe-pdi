@@ -19,7 +19,6 @@ const {
   destroy: destroyHands,
   indexFingerPos,
   handsDetected,
-  landmarks,
 } = useHandTracking();
 
 const {
@@ -90,7 +89,7 @@ function drawDetection() {
     ctx.fill();
   }
 
-  // Dibujar posición del rostro (mirado horizontalmente para que coincida con el video espejado)
+  // Dibujar rostro
   if (facePosition.value) {
     const { x, y } = facePosition.value;
 
@@ -153,11 +152,8 @@ function drawOverlay() {
         data[i + 2] = r * 0.272 + g * 0.534 + b * 0.131;
       }
     } else if (props.filterType === "contrast") {
-      // Factor de contraste (mayor a 1 aumenta el contraste, en este caso 2.0 es el doble)
       const factor = 2.0;
       for (let i = 0; i < max; i += 4) {
-        // Fórmula: factor * (color - 128) + 128
-        // El Uint8ClampedArray se encarga de que no baje de 0 ni pase de 255
         data[i] = factor * (data[i] - 128) + 128; // R
         data[i + 1] = factor * (data[i + 1] - 128) + 128; // G
         data[i + 2] = factor * (data[i + 2] - 128) + 128; // B
@@ -173,7 +169,7 @@ function drawOverlay() {
       }
     } else if (props.filterType === "posterize") {
       // 2. POSTERIZACIÓN
-      const niveles = 4; // Entre más bajo, menos colores
+      const niveles = 4;
       const factor = 255 / (niveles - 1);
       for (let i = 0; i < max; i += 4) {
         data[i] = Math.round(data[i] / factor) * factor;
@@ -183,27 +179,13 @@ function drawOverlay() {
     } else if (props.filterType === "red-channel") {
       // 3. EXTRACCIÓN DE CANAL ROJO
       for (let i = 0; i < max; i += 4) {
-        // data[i] (Rojo) se queda igual
-        data[i + 1] = 0; // Apagamos el Verde
-        data[i + 2] = 0; // Apagamos el Azul
+        data[i + 1] = 0;
+        data[i + 2] = 0;
       }
-    }
-    // ----- NUEVOS FILTROS DE CONVOLUCIÓN (Matrices 3x3) -----
-    else {
-      // Definimos nuestras matrices de kernel (3x3 aplanadas)
+    } else {
       const kernels: Record<string, number[]> = {
-        edge: [
-          // Detección de bordes (Laplaciano)
-          0, -1, 0, -1, 4, -1, 0, -1, 0,
-        ],
-        sharpen: [
-          // Realce / Enfoque
-          0, -1, 0, -1, 5, -1, 0, -1, 0,
-        ],
-        emboss: [
-          // Relieve
-          -2, -1, 0, -1, 1, 1, 0, 1, 2,
-        ],
+        edge: [0, -1, 0, -1, 4, -1, 0, -1, 0],
+        emboss: [-2, -1, 0, -1, 1, 1, 0, 1, 2],
       };
 
       const kernel = kernels[props.filterType];
@@ -215,18 +197,14 @@ function drawOverlay() {
           .toString()
           .split(",")
           .map((c) => parseInt(c));
-        //currentKernel props.filterType.split(",").map((c) => parseInt(c));
       }
       if (currentKernel) {
-        // Hacemos una copia de los datos originales para leer de ahí
         const tempData = new Uint8ClampedArray(data);
         const w = canvasWidth;
         const h = canvasHeight;
 
-        // Compensación de luminosidad (para el relieve, para que no se vea negro)
         const offset = props.filterType === "emboss" ? 128 : 0;
 
-        // Saltamos los bordes extremos 1 píxel (y=1 a h-1) por rendimiento
         for (let y = 1; y < h - 1; y++) {
           for (let x = 1; x < w - 1; x++) {
             const dstOff = (y * w + x) * 4;
@@ -234,7 +212,6 @@ function drawOverlay() {
               g = 0,
               b = 0;
 
-            // Recorremos los 9 píxeles (matriz 3x3)
             for (let cy = -1; cy <= 1; cy++) {
               for (let cx = -1; cx <= 1; cx++) {
                 const srcOff = ((y + cy) * w + (x + cx)) * 4;
@@ -246,7 +223,6 @@ function drawOverlay() {
               }
             }
 
-            // Aplicamos valores y sumamos el offset
             data[dstOff] = r + offset;
             data[dstOff + 1] = g + offset;
             data[dstOff + 2] = b + offset;
