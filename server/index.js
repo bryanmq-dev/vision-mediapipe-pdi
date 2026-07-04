@@ -1,74 +1,113 @@
 import express from "express";
-import { WebSocketServer } from "ws";
 import { createServer } from "http";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, extname, resolve } from "path";
+import { readdir, stat } from "fs/promises";
+import { createReadStream } from "fs";
+import { execFile, execFileSync } from "child_process";
+import os from "os";
+import { resolveSafePath } from "./paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
 
-const clients = new Map();
-
-function broadcast(data, excludeId = null) {
-  const message = JSON.stringify(data);
-  for (const [id, client] of clients) {
-    if (id !== excludeId && client.ws.readyState === 1) {
-      client.ws.send(message);
-    }
+function detectDownloadsDir() {
+  try {
+    return execFileSync("xdg-user-dir", ["DOWNLOAD"], {
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    return join(os.homedir(), "Downloads");
   }
 }
 
-function getUsersList() {
-  return Array.from(clients.values()).map((c) => ({ id: c.id, name: c.name }));
+const FILES_BASE_DIR = resolve(
+  process.env.FILES_BASE_DIR || detectDownloadsDir(),
+);
+
+const SCREENSHOT_BIN =
+  process.env.SCREENSHOT_BIN ||
+  "/home/bryan/.local/share/omarchy/bin/omarchy-capture-screenshot";
+
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
+const CONTENT_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".pdf": "application/pdf",
+};
+
+function entryType(name) {
+  const ext = extname(name).toLowerCase();
+  if (ext === ".pdf") return "pdf";
+  if (IMAGE_EXTENSIONS.has(ext)) return "image";
+  return null;
 }
 
-wss.on("connection", (ws) => {
-  const clientId = crypto.randomUUID();
+app.get("/api/files", async (req, res) => {
+  let target;
+  try {
+    target = resolveSafePath(FILES_BASE_DIR, req.query.dir);
+  } catch {
+    return res.status(400).json({ error: "Invalid path" });
+  }
 
-  ws.on("message", (data) => {
-    try {
-      const message = JSON.parse(data.toString());
-
-      switch (message.type) {
-        case "join": {
-          const name = (message.name || "").trim().slice(0, 50) || "Anonymous";
-          clients.set(clientId, { id: clientId, name, ws });
-          broadcast({ type: "users", list: getUsersList() });
-          ws.send(JSON.stringify({ type: "users", list: getUsersList() }));
-          console.log(`[+] ${name} connected (${clients.size} users)`);
-          break;
-        }
-        case "ping":
-          ws.send(JSON.stringify({ type: "pong" }));
-          break;
-        default:
-          broadcast({ type: "message", from: clients.get(clientId)?.name, content: message.content }, clientId);
+  try {
+    const dirEntries = await readdir(target, { withFileTypes: true });
+    const entries = [];
+    for (const entry of dirEntries) {
+      const relPath = join(req.query.dir || "", entry.name);
+      if (entry.isDirectory()) {
+        entries.push({ name: entry.name, type: "dir", path: relPath });
+      } else {
+        const type = entryType(entry.name);
+        if (type) entries.push({ name: entry.name, type, path: relPath });
       }
-    } catch (e) {
-      console.error("Invalid message:", e.message);
     }
-  });
+    res.json(entries);
+  } catch {
+    res.status(404).json({ error: "Directory not found" });
+  }
+});
 
-  ws.on("close", () => {
-    const client = clients.get(clientId);
-    if (client) {
-      console.log(`[-] ${client.name} disconnected (${clients.size - 1} users)`);
-      clients.delete(clientId);
-      broadcast({ type: "users", list: getUsersList() });
-    }
-  });
+app.get("/api/files/content", async (req, res) => {
+  let target;
+  try {
+    target = resolveSafePath(FILES_BASE_DIR, req.query.path);
+  } catch {
+    return res.status(400).json({ error: "Invalid path" });
+  }
 
-  ws.on("error", (err) => {
-    console.error("WS error:", err.message);
-    const client = clients.get(clientId);
-    if (client) {
-      clients.delete(clientId);
-      broadcast({ type: "users", list: getUsersList() });
+  try {
+    const stats = await stat(target);
+    if (!stats.isFile()) {
+      return res.status(400).json({ error: "Not a file" });
     }
+    const contentType = CONTENT_TYPES[extname(target).toLowerCase()];
+    if (!contentType) {
+      return res.status(400).json({ error: "Unsupported file type" });
+    }
+    res.setHeader("Content-Type", contentType);
+    createReadStream(target).pipe(res);
+  } catch {
+    res.status(404).json({ error: "File not found" });
+  }
+});
+
+app.post("/api/screenshot", (req, res) => {
+  execFile(SCREENSHOT_BIN, ["fullscreen", "save"], (err, stdout) => {
+    if (err) {
+      console.error("Screenshot failed:", err.message);
+      return res.status(500).json({ error: "Screenshot failed" });
+    }
+    const path = stdout.trim();
+    console.log("Screenshot guardado en:", path);
+    res.json({ ok: true, path });
   });
 });
 
